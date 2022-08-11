@@ -1,0 +1,34 @@
+{
+  "name": "edgetelemetrics/reactphp-dns-over-https-client",
+  "description": "description",
+  "minimum-stability": "stable",
+  "license": "MIT",
+  "type": "library",
+  "authors": [
+    {
+      "name": "James Lucas",
+      "email": "james@lucas.net.au"
+    }
+  ],
+  "require": {
+    "php": "^8.0",
+    "react/http": "^1.6",
+    "react/dns": "*"
+  },
+  "require-dev": {
+    "phpunit/phpunit": "^9.5"
+  },
+  "suggest": {
+    "ext-sodium": "LibSodium Base64 URL Safe Encoding"
+  },
+  "autoload": {
+    "psr-4": {
+      "EdgeTelemetrics\\React\\Dns\\": "src/"
+    }
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "EdgeTelemetrics\\React\\Dns\\Tests\\": "tests/"
+    }
+  }
+}
