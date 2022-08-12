@@ -15,7 +15,7 @@ class FunctionalTests extends TestCase
 {
     public function testResolveGoogleViaPostResolves()
     {
-        $executor = new DohExecutor('https://1.1.1.1/dns-query', DohExecutor::METHOD_POST);
+        $executor = new DohExecutor('https://1.1.1.1/dns-query', null,DohExecutor::METHOD_POST);
         $query = new Query('one.one.one.one', Message::TYPE_A, Message::CLASS_IN);
         $promise = $executor->query($query);
 
@@ -32,7 +32,7 @@ class FunctionalTests extends TestCase
 
     public function testResolveGoogleViaGetResolves()
     {
-        $executor = new DohExecutor('https://1.1.1.1/dns-query', DohExecutor::METHOD_GET);
+        $executor = new DohExecutor('https://1.1.1.1/dns-query', null,DohExecutor::METHOD_GET);
         $query = new Query('one.one.one.one', Message::TYPE_A, Message::CLASS_IN);
         $promise = $executor->query($query);
 
@@ -49,7 +49,7 @@ class FunctionalTests extends TestCase
 
     public function testResolveInvalidRejects()
     {
-        $executor = new DohExecutor('https://1.1.1.1/dns-query', DohExecutor::METHOD_POST);
+        $executor = new DohExecutor('https://1.1.1.1/dns-query');
         $query = new Query('example.invalid', Message::TYPE_A, Message::CLASS_IN);
         $promise = $executor->query($query);
 
@@ -66,7 +66,7 @@ class FunctionalTests extends TestCase
 
     public function testResolveToInvalidServerRejects()
     {
-        $executor = new DohExecutor('https://127.0.0.1:0/dns-query', DohExecutor::METHOD_POST);
+        $executor = new DohExecutor('https://127.0.0.1:0/dns-query');
         $query = new Query('google.com', Message::TYPE_A, Message::CLASS_IN);
         $promise = $executor->query($query);
 
@@ -84,7 +84,7 @@ class FunctionalTests extends TestCase
 
     public function testQueryRejectsIfMessageExceedsMaximumMessageSize()
     {
-        $executor = $executor = new DohExecutor('https://127.0.0.1:0/dns-query', DohExecutor::METHOD_POST);
+        $executor = $executor = new DohExecutor('https://127.0.0.1:0/dns-query');
 
         $query = new Query('google.' . str_repeat('.com', 60000), Message::TYPE_A, Message::CLASS_IN);
         $promise = $executor->query($query);
@@ -103,6 +103,6 @@ class FunctionalTests extends TestCase
     {
         $this->expectException(\InvalidArgumentException::class);
 
-        new DohExecutor('https://1.1.1.1/dns-query', 'put');
+        new DohExecutor('https://1.1.1.1/dns-query', null, 'put');
     }
 }
