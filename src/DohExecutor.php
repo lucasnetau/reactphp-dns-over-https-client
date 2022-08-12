@@ -17,14 +17,14 @@ use RuntimeException;
 
 class DohExecutor implements ExecutorInterface {
 
-    private $nameserver;
-    private $loop;
-    private $parser;
-    private $dumper;
+    private string $nameserver;
+    private LoopInterface $loop;
+    private Parser $parser;
+    private BinaryDumper $dumper;
 
-    private $method;
+    private string $method;
 
-    private $browser;
+    private Browser $browser;
 
     const METHOD_GET = 'get';
     const METHOD_POST = 'post';
