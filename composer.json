@@ -13,7 +13,8 @@
   "require": {
     "php": "^8.0",
     "react/http": "^1.6",
-    "react/dns": "*"
+    "react/dns": "*",
+    "ext-openssl": "*"
   },
   "require-dev": {
     "phpunit/phpunit": "^9.5"

@@ -13,7 +13,7 @@ use React\EventLoop\Loop;
  */
 class FunctionalTests extends TestCase
 {
-    public function testResolveGoogleViaPostResolves()
+    public function testResolveCloudflareViaPostResolves()
     {
         $executor = new DohExecutor('https://1.1.1.1/dns-query', null,DohExecutor::METHOD_POST);
         $query = new Query('one.one.one.one', Message::TYPE_A, Message::CLASS_IN);
@@ -30,7 +30,7 @@ class FunctionalTests extends TestCase
         $this->assertEquals(Message::RCODE_OK, $answer->rcode);
     }
 
-    public function testResolveGoogleViaGetResolves()
+    public function testResolveCloudflareViaGetResolves()
     {
         $executor = new DohExecutor('https://1.1.1.1/dns-query', null,DohExecutor::METHOD_GET);
         $query = new Query('one.one.one.one', Message::TYPE_A, Message::CLASS_IN);
@@ -40,6 +40,79 @@ class FunctionalTests extends TestCase
         $promise->then(function ($message) use (&$answer) {
             $answer = $message;
         });
+
+        Loop::run();
+
+        $this->assertNotNull($answer);
+        $this->assertEquals(Message::RCODE_OK, $answer->rcode);
+    }
+
+    public function testResolveCloudflareHostnameViaGetResolves()
+    {
+        $executor = new DohExecutor('https://one.one.one.one/dns-query', null,DohExecutor::METHOD_GET);
+        $query = new Query('one.one.one.one', Message::TYPE_A, Message::CLASS_IN);
+        $promise = $executor->query($query);
+
+        $answer = null;
+        $promise->then(function ($message) use (&$answer) {
+            $answer = $message;
+        });
+
+        Loop::run();
+
+        $this->assertNotNull($answer);
+        $this->assertEquals(Message::RCODE_OK, $answer->rcode);
+    }
+
+    public function testResolveSecondQueryReusesConnection()
+    {
+        $executor = new DohExecutor('https://one.one.one.one/dns-query', null,DohExecutor::METHOD_GET);
+        $query = new Query('one.one.one.one', Message::TYPE_A, Message::CLASS_IN);
+        $promise1 = $executor->query($query);
+        $promise2 = $executor->query($query);
+
+        $answer = null;
+        $promise1->then(function ($message) use (&$answer) {
+            $answer = $message;
+        });
+
+        $promise2->then(function ($message) use (&$answer) {
+            $answer = $message;
+        });
+
+        Loop::run();
+
+        $this->assertNotNull($answer);
+        $this->assertEquals(Message::RCODE_OK, $answer->rcode);
+    }
+
+    public function testResolveGoogleViaIPv6HostResolves()
+    {
+        $executor = new DohExecutor('https://dns64.dns.google/dns-query', null,DohExecutor::METHOD_GET);
+        $query = new Query('google.com', Message::TYPE_A, Message::CLASS_IN);
+        $promise = $executor->query($query);
+
+        $answer = null;
+        $promise->then(function ($message) use (&$answer) {
+            $answer = $message;
+        }, function($reason) { echo $reason->getMessage();});
+
+        Loop::run();
+
+        $this->assertNotNull($answer);
+        $this->assertEquals(Message::RCODE_OK, $answer->rcode);
+    }
+
+    public function testResolveGoogleViaIPv6IpResolves()
+    {
+        $executor = new DohExecutor('https://[2001:4860:4860::8888]/dns-query', null,DohExecutor::METHOD_GET);
+        $query = new Query('google.com', Message::TYPE_A, Message::CLASS_IN);
+        $promise = $executor->query($query);
+
+        $answer = null;
+        $promise->then(function ($message) use (&$answer) {
+            $answer = $message;
+        }, function($reason) { echo $reason->getMessage();});
 
         Loop::run();
 
@@ -84,7 +157,7 @@ class FunctionalTests extends TestCase
 
     public function testQueryRejectsIfMessageExceedsMaximumMessageSize()
     {
-        $executor = $executor = new DohExecutor('https://127.0.0.1:0/dns-query');
+        $executor = new DohExecutor('https://127.0.0.1:0/dns-query');
 
         $query = new Query('google.' . str_repeat('.com', 60000), Message::TYPE_A, Message::CLASS_IN);
         $promise = $executor->query($query);
@@ -104,5 +177,12 @@ class FunctionalTests extends TestCase
         $this->expectException(\InvalidArgumentException::class);
 
         new DohExecutor('https://1.1.1.1/dns-query', null, 'put');
+    }
+
+    public function testInvalidNameserverThrows()
+    {
+        $this->expectException(\InvalidArgumentException::class);
+
+        new DohExecutor('http://1.1.1.1/dns-query');
     }
 }
