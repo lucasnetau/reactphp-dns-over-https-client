@@ -1,6 +1,6 @@
 {
   "name": "edgetelemetrics/reactphp-dns-over-https-client",
-  "description": "description",
+  "description": "A ReactPHP/DNS Executor to resolve DNS queries over HTTPS, providing secure DNS resolution over untrusted or shared networks (eg Serverless deployments) utilising standard HTTPS queries.",
   "minimum-stability": "stable",
   "license": "MIT",
   "type": "library",
