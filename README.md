@@ -1,6 +1,6 @@
 # DNS over HTTPS client for ReactPHP
 
-Resolve DNS queries over HTTPS, provides secure DNS resolution over untrusted or shared networks (eg Serverless deployments) utilising standard HTTP queries.
+Resolve DNS queries over HTTPS, provides secure DNS resolution over untrusted or shared networks (eg Serverless deployments) utilising standard HTTPS queries.
 
 ## Requirements
 
@@ -13,6 +13,11 @@ You can add the library as project dependency using [Composer](https://getcompos
 ```sh
 composer require edgetelemetrics/reactphp-dns-over-https-client
 ```
+
+## Examples
+See [/examples](/examples) directory
+ * [Use DoH with ReactHTTP Client](/examples/browser.php)
+ * [Use DoH to find your public IP](/examples/whats-my-ip.php)
 
 ## License
 
