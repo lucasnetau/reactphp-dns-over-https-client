@@ -15,7 +15,7 @@ class FunctionalTests extends TestCase
 {
     public function testResolveCloudflareViaPostResolves()
     {
-        $executor = new DohExecutor('https://1.1.1.1/dns-query', null,DohExecutor::METHOD_POST);
+        $executor = new DohExecutor('https://1.1.1.1/dns-query', DohExecutor::METHOD_POST);
         $query = new Query('one.one.one.one', Message::TYPE_A, Message::CLASS_IN);
         $promise = $executor->query($query);
 
@@ -32,7 +32,7 @@ class FunctionalTests extends TestCase
 
     public function testResolveCloudflareViaGetResolves()
     {
-        $executor = new DohExecutor('https://1.1.1.1/dns-query', null,DohExecutor::METHOD_GET);
+        $executor = new DohExecutor('https://1.1.1.1/dns-query',DohExecutor::METHOD_GET);
         $query = new Query('one.one.one.one', Message::TYPE_A, Message::CLASS_IN);
         $promise = $executor->query($query);
 
@@ -49,7 +49,7 @@ class FunctionalTests extends TestCase
 
     public function testResolveCloudflareHostnameViaGetResolves()
     {
-        $executor = new DohExecutor('https://one.one.one.one/dns-query', null,DohExecutor::METHOD_GET);
+        $executor = new DohExecutor('https://one.one.one.one/dns-query',DohExecutor::METHOD_GET);
         $query = new Query('one.one.one.one', Message::TYPE_A, Message::CLASS_IN);
         $promise = $executor->query($query);
 
@@ -66,7 +66,7 @@ class FunctionalTests extends TestCase
 
     public function testResolveSecondQueryReusesConnection()
     {
-        $executor = new DohExecutor('https://one.one.one.one/dns-query', null,DohExecutor::METHOD_GET);
+        $executor = new DohExecutor('https://one.one.one.one/dns-query');
         $query = new Query('one.one.one.one', Message::TYPE_A, Message::CLASS_IN);
         $promise1 = $executor->query($query);
         $promise2 = $executor->query($query);
@@ -88,7 +88,7 @@ class FunctionalTests extends TestCase
 
     public function testResolveGoogleViaIPv6HostResolves()
     {
-        $executor = new DohExecutor('https://dns64.dns.google/dns-query', null,DohExecutor::METHOD_GET);
+        $executor = new DohExecutor('https://dns64.dns.google/dns-query');
         $query = new Query('google.com', Message::TYPE_A, Message::CLASS_IN);
         $promise = $executor->query($query);
 
@@ -105,7 +105,7 @@ class FunctionalTests extends TestCase
 
     public function testResolveGoogleViaIPv6IpResolves()
     {
-        $executor = new DohExecutor('https://[2001:4860:4860::8888]/dns-query', null,DohExecutor::METHOD_GET);
+        $executor = new DohExecutor('https://[2001:4860:4860::8888]/dns-query');
         $query = new Query('google.com', Message::TYPE_A, Message::CLASS_IN);
         $promise = $executor->query($query);
 
@@ -167,6 +167,8 @@ class FunctionalTests extends TestCase
             $exception = $reason;
         });
 
+        Loop::run();
+
         /** @var \RuntimeException $exception */
         $this->assertInstanceOf('RuntimeException', $exception);
         $this->assertStringStartsWith('DNS query for '. $query->name . ' (A) failed: Query too large for HTTPS transport', $exception->getMessage());
@@ -176,7 +178,7 @@ class FunctionalTests extends TestCase
     {
         $this->expectException(\InvalidArgumentException::class);
 
-        new DohExecutor('https://1.1.1.1/dns-query', null, 'put');
+        new DohExecutor('https://1.1.1.1/dns-query', 'put');
     }
 
     public function testInvalidNameserverThrows()

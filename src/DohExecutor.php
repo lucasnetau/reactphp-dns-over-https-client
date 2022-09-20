@@ -43,10 +43,10 @@ class DohExecutor implements ExecutorInterface {
 
     /**
      * @param string $nameserver
-     * @param ?LoopInterface $loop
      * @param string $method
+     * @param ?LoopInterface $loop
      */
-    public function __construct(string $nameserver, LoopInterface $loop = null, string $method = self::METHOD_GET)
+    public function __construct(string $nameserver, string $method = self::METHOD_GET, LoopInterface $loop = null)
     {
         if (!class_exists('\React\Http\Browser')) {
             throw new RuntimeException('DNS over HTTPS support requires reactphp/http library'); //@codeCoverageIgnore
