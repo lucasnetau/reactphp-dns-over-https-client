@@ -18,10 +18,17 @@ use React\Promise\Deferred;
 use React\Socket\ConnectionInterface;
 use React\Socket\Connector;
 use RuntimeException;
+use function explode;
+use function inet_pton;
+use function openssl_x509_fingerprint;
+use function openssl_x509_parse;
 use function parse_url;
+use function str_replace;
+use function stream_context_get_params;
 use function strlen;
 use function strtolower;
 use function substr_count;
+use function trim;
 
 class DohExecutor implements ExecutorInterface {
 
@@ -40,6 +47,9 @@ class DohExecutor implements ExecutorInterface {
     const METHOD_POST = 'post';
 
     const FINGERPRINT_HASH_METHOD = 'sha256';
+
+    /** @var bool Flag for identifying when we need to workaround php-src issue GH-9356 */
+    const NEED_GH9356_IPV6_WORKAROUND = (\PHP_VERSION_ID < 80121 || (\PHP_VERSION_ID >= 80200 && \PHP_VERSION_ID < 80208));
 
     /**
      * @param string $nameserver
@@ -137,60 +147,8 @@ class DohExecutor implements ExecutorInterface {
         if (!isset($this->browserResolution)) {
             $deferred = new Deferred();
             $this->browserResolution = $deferred->promise();
-            if ($this->ipv6address) {
-                // PHP does not validate IPv6 addresses contained in the SAN fields of a certificate
-                // To support IPv6 we download the certificate on the first connect and manually verify our nameserver IPv6 IP
-                // is listed in the SAN fields. We then construct a Browser instance with verify_peer_name set to false but with the peer_fingerprint set to our verified certificate.
-                // This doesn't always work because the server may use different front end certificates (SIGH!)
-                $address = str_replace('https://', 'tls://', $this->nameserver);
-                $connector = new Connector([
-                    'tcp' => [
-                        'tcp_nodelay' => true,
-                        ],
-                    'tls' => [
-                        'verify_peer_name' => false,
-                        'capture_peer_cert' => true
-                    ],
-                    'dns' => false,
-                ], $this->loop);
-                $connector->connect($address)->then(function (ConnectionInterface $connection) use ($deferred) {
-                    $response = stream_context_get_params($connection->stream); //Using @internal stream
-                    $connection->end();
-                    $certificatePem = $response['options']['ssl']['peer_certificate'];
-
-                    $certificateFields = openssl_x509_parse($certificatePem);
-                    $additionalDomains = explode(', ', $certificateFields['extensions']['subjectAltName'] ?? '');
-
-                    $ip = inet_pton(trim(parse_url($this->nameserver, PHP_URL_HOST), '[]'));
-                    if ($ip !== false) {
-                        foreach ($additionalDomains as $subAltName) {
-                            $subAltName = trim(strtolower($subAltName));
-                            if (str_starts_with($subAltName, 'ip address:')) {
-                                $compare = inet_pton(str_replace('ip address:', '', $subAltName));
-                                if ($compare === $ip) {
-                                    $fingerprint = openssl_x509_fingerprint($certificatePem, self::FINGERPRINT_HASH_METHOD);
-                                    $browser = (new Browser(new Connector([
-                                        'tcp' => [
-                                            'tcp_nodelay' => true,
-                                            ],
-                                        'tls' => [
-                                            'verify_peer_name' => false,
-                                            'peer_fingerprint'=>[
-                                                self::FINGERPRINT_HASH_METHOD => $fingerprint,
-                                            ],
-                                        ],
-                                    ], $this->loop), $this->loop));
-                                    $deferred->resolve($browser);
-                                    return;
-                                }
-                            }
-                        }
-                    }
-                    $deferred->reject(new RuntimeException('IPv6 IP Address Connection Failed. Unable to Validate Peer Certificate'));
-
-                }, function($ex) use ($deferred) {
-                    $deferred->reject(new RuntimeException('IPv6 IP Address Connection Failed. ' . $ex->getMessage()));
-                });
+            if ($this->ipv6address && self::NEED_GH9356_IPV6_WORKAROUND) {
+                $this->initialiseIPv6Workaround($deferred);
             } else {
                 $browser = (new Browser(new Connector([
                     'tcp' => [
@@ -202,5 +160,61 @@ class DohExecutor implements ExecutorInterface {
             }
         }
         return $this->browserResolution;
+    }
+
+    protected function initialiseIPv6Workaround(Deferred $deferred) : void {
+        // Some versions of PHP do not validate IPv6 addresses contained in the SAN fields of a certificate
+        // To support IPv6 we download the certificate on the first connect and manually verify our nameserver IPv6 IP
+        // is listed in the SAN fields. We then construct a Browser instance with verify_peer_name set to false but with the peer_fingerprint set to our verified certificate.
+        // This doesn't always work because the server may use different front end certificates (SIGH!)
+        $address = str_replace('https://', 'tls://', $this->nameserver);
+        $connector = new Connector([
+            'tcp' => [
+                'tcp_nodelay' => true,
+            ],
+            'tls' => [
+                'verify_peer_name' => false,
+                'capture_peer_cert' => true
+            ],
+            'dns' => false,
+        ], $this->loop);
+        $connector->connect($address)->then(function (ConnectionInterface $connection) use ($deferred) {
+            $response = stream_context_get_params($connection->stream); //Using @internal stream
+            $connection->end();
+            $certificatePem = $response['options']['ssl']['peer_certificate'];
+
+            $certificateFields = openssl_x509_parse($certificatePem);
+            $additionalDomains = explode(', ', $certificateFields['extensions']['subjectAltName'] ?? '');
+
+            $ip = inet_pton(trim(parse_url($this->nameserver, PHP_URL_HOST), '[]'));
+            if ($ip !== false) {
+                foreach ($additionalDomains as $subAltName) {
+                    $subAltName = trim(strtolower($subAltName));
+                    if (str_starts_with($subAltName, 'ip address:')) {
+                        $compare = inet_pton(str_replace('ip address:', '', $subAltName));
+                        if ($compare === $ip) {
+                            $fingerprint = openssl_x509_fingerprint($certificatePem, self::FINGERPRINT_HASH_METHOD);
+                            $browser = (new Browser(new Connector([
+                                'tcp' => [
+                                    'tcp_nodelay' => true,
+                                ],
+                                'tls' => [
+                                    'verify_peer_name' => false,
+                                    'peer_fingerprint'=>[
+                                        self::FINGERPRINT_HASH_METHOD => $fingerprint,
+                                    ],
+                                ],
+                            ], $this->loop), $this->loop));
+                            $deferred->resolve($browser);
+                            return;
+                        }
+                    }
+                }
+            }
+            $deferred->reject(new RuntimeException('IPv6 IP Address Connection Failed. Unable to Validate Peer Certificate'));
+
+        }, function($ex) use ($deferred) {
+            $deferred->reject(new RuntimeException('IPv6 IP Address Connection Failed. ' . $ex->getMessage()));
+        });
     }
 }
