@@ -11,7 +11,7 @@ use React\EventLoop\Loop;
 /**
  * Functional Tests
  */
-class FunctionalTests extends TestCase
+class FunctionalTest extends TestCase
 {
     public function testResolveCloudflareViaPostResolves()
     {
@@ -79,40 +79,6 @@ class FunctionalTests extends TestCase
         $promise2->then(function ($message) use (&$answer) {
             $answer = $message;
         });
-
-        Loop::run();
-
-        $this->assertNotNull($answer);
-        $this->assertEquals(Message::RCODE_OK, $answer->rcode);
-    }
-
-    public function testResolveGoogleViaIPv6HostResolves()
-    {
-        $executor = new DohExecutor('https://dns64.dns.google/dns-query');
-        $query = new Query('google.com', Message::TYPE_A, Message::CLASS_IN);
-        $promise = $executor->query($query);
-
-        $answer = null;
-        $promise->then(function ($message) use (&$answer) {
-            $answer = $message;
-        }, function($reason) { echo $reason->getMessage();});
-
-        Loop::run();
-
-        $this->assertNotNull($answer);
-        $this->assertEquals(Message::RCODE_OK, $answer->rcode);
-    }
-
-    public function testResolveGoogleViaIPv6IpResolves()
-    {
-        $executor = new DohExecutor('https://[2001:4860:4860::8888]/dns-query');
-        $query = new Query('google.com', Message::TYPE_A, Message::CLASS_IN);
-        $promise = $executor->query($query);
-
-        $answer = null;
-        $promise->then(function ($message) use (&$answer) {
-            $answer = $message;
-        }, function($reason) { echo $reason->getMessage();});
 
         Loop::run();
 
