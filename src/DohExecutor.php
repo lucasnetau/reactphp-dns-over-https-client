@@ -56,7 +56,7 @@ class DohExecutor implements ExecutorInterface {
      * @param string $method
      * @param ?LoopInterface $loop
      */
-    public function __construct(string $nameserver, string $method = self::METHOD_GET, LoopInterface $loop = null)
+    public function __construct(string $nameserver, string $method = self::METHOD_GET, ?LoopInterface $loop = null)
     {
         if (!class_exists('\React\Http\Browser')) {
             throw new RuntimeException('DNS over HTTPS support requires reactphp/http library'); //@codeCoverageIgnore
@@ -150,18 +150,19 @@ class DohExecutor implements ExecutorInterface {
             if ($this->ipv6address && self::NEED_GH9356_IPV6_WORKAROUND) {
                 $this->initialiseIPv6Workaround($deferred);
             } else {
-                $browser = (new Browser(new Connector([
+                $browser = new Browser(new Connector([
                     'tcp' => [
                         'tcp_nodelay' => true,
                         ],
                     ]
-                ), $this->loop));
+                ), $this->loop);
                 $deferred->resolve($browser);
             }
         }
         return $this->browserResolution;
     }
 
+    /** @codeCoverageIgnore */
     protected function initialiseIPv6Workaround(Deferred $deferred) : void {
         // Some versions of PHP do not validate IPv6 addresses contained in the SAN fields of a certificate
         // To support IPv6 we download the certificate on the first connect and manually verify our nameserver IPv6 IP
